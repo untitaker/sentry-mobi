@@ -1,0 +1,23 @@
+[package]
+name = "sentry-mobi"
+authors = ["Markus Unterwaditzer <markus-honeypot@unterwaditzer.net>"]
+description = "A minimal alternative frontend to Sentry.io"
+readme = "README.md"
+version = "0.1.0"
+edition = "2021"
+keywords = ["sentryio"]
+license = "MIT"
+repository = "https://github.com/untitaker/sentry-mobi"
+
+[dependencies]
+async-trait = "0.1.83"
+axum = { version = "0.7.7", features = ["macros"] }
+maud = { version = "0.26.0", features = ["axum"] }
+reqwest = { version = "0.12.9", features = ["json"] }
+serde = { version = "1.0.214", features = ["derive"] }
+thiserror = "2.0.0"
+time = "0.3.36"
+tokio = { version = "1.41.0", features = ["full"] }
+tower-sessions = "0.13.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
