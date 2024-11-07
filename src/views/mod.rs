@@ -7,13 +7,16 @@ use maud::html;
 use serde::Deserialize;
 use tower_sessions::Session;
 
+use crate::views::helpers::LayoutOptions;
 use crate::Error;
 
 mod helpers;
+mod issue_details;
 mod organization_details;
 mod organization_overview;
 mod project_details;
 
+pub use issue_details::issue_details;
 pub use organization_details::organization_details;
 pub use organization_overview::organization_overview;
 pub use project_details::project_details;
@@ -32,18 +35,28 @@ pub async fn index(
     Query(params): Query<RedirectTo>,
 ) -> Result<impl IntoResponse, Error> {
     if token.token.is_empty() {
-        Ok(wrap_template(html! {
-            form method="post" action="/auth" {
-                input type="password" name="token";
-                @if let Some(redirect_to) = params.redirect_to {
-                    input type="hidden" name="redirect_to" value=(redirect_to);
+        Ok(wrap_template(
+            LayoutOptions::default(),
+            html! {
+                form.login method="post" action="/auth" {
+                    @if let Some(redirect_to) = params.redirect_to {
+                        input type="hidden" name="redirect_to" value=(redirect_to);
+                    }
+
+                    fieldset role="group" {
+                        input type="password" name="token" placeholder="your API token";
+                        input type="submit" value="Login";
+                    }
+
+                    small {
+                        "get a user API token from Sentry to view issues"
+                    }
                 }
-                input type="submit" value="Login";
-            }
-        })
+            },
+        )
         .into_response())
     } else {
-        Ok(Redirect::to("/organizations").into_response())
+        Ok(organization_overview(token).await?.into_response())
     }
 }
 

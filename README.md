@@ -4,9 +4,10 @@ A work-in-progress alternative frontend to Sentry.
 
 Right now it can view organizations, projects and a projects issues.
 
-1. `cargo run`
-2. get a user API token from sentry (User Settings)
-3. Log in at `http://localhost:3000`
+1. `make`
+2. `target/debug/sentry-mobi`
+3. get a user API token from sentry (User Settings)
+4. Log in at `http://localhost:3000`
 
 ## Design goals
 

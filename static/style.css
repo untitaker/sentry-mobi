@@ -1,0 +1,51 @@
+@import url("/pico.css");
+@import url("/pico.colors.css");
+
+#spinner {
+    visibility: hidden;
+    text-align: right;
+}
+
+#spinner.htmx-request {
+    visibility: visible;
+}
+
+[data-level=warning] {
+    color: var(--pico-color-yellow-100);
+}
+
+[data-level=error] {
+    color: var(--pico-color-pumpkin-300);
+}
+
+[data-level=fatal] {
+    color: var(--pico-color-pink-500);
+}
+
+.prop {
+    margin: 2px;
+}
+
+.label {
+    display: inline-block;
+    min-width: 128px;
+}
+
+li.prop {
+    list-style: none;
+}
+
+ul:has(> li.prop) {
+    padding: 0;
+}
+
+small.secondary {
+    color: var(--pico-secondary);
+}
+
+details[open] {
+    background: var(--pico-card-background-color);
+    border-radius: var(--pico-border-radius);
+    margin: -0.5rem -0.5rem 0.5rem;
+    padding: 0.5rem;
+}

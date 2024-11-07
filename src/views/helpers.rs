@@ -1,22 +1,106 @@
+use jiff::{SpanRound, Timestamp, Unit};
 use maud::{html, Markup};
 
-pub fn wrap_admin_template(content: Markup) -> Markup {
-    wrap_template(html! {
-        form method="post" action="/auth/logout" {
-            input type="submit" value="Logout";
-        }
-
-        (content)
-    })
+#[derive(Default)]
+pub struct LayoutOptions {
+    pub title: String,
+    pub header: Option<Markup>,
 }
 
-pub fn wrap_template(content: Markup) -> Markup {
+pub fn wrap_admin_template(mut opt: LayoutOptions, content: Markup) -> Markup {
+    opt.header = Some(html! {
+        form method="post" action="/auth/logout" {
+            fieldset.grid {
+                a.secondary
+                    role="button"
+                    style="width: 100%"
+                    href=(format!("?_cachebust={}", uuid::Uuid::new_v4()))
+                    title="force a hard-reload of data, skipping caching" {
+                        "Refresh"
+                    }
+
+                // https://github.com/picocss/pico/issues/496
+                input.outline.secondary type="submit" value="Logout" style="margin: 0";
+            }
+        }
+    });
+    wrap_template(
+        opt,
+        content,
+    )
+}
+
+pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
     html! {
         (maud::DOCTYPE)
-        h1 {
-            "sentry.mobi"
+        head {
+            title {
+                @if opt.title.is_empty() {
+                    "sentry.mobi"
+                } @else {
+                    (opt.title) " - sentry.mobi"
+                }
+            }
+            meta charset="utf-8";
+            meta name="viewport" content="width=device-width, initial-scale=1";
+            meta name="htmx-config" content=r#"{"includeIndicatorStyles": false}"#;
+            meta name="color-scheme" content="light dark";
+            link rel="stylesheet" href="/style.css";
         }
 
-        (content)
+        body hx-boost="true" hx-indicator="#spinner" hx-ext="preload" {
+            header.container {
+                div.grid {
+                    div {
+                        h1 {
+                            a.secondary preload="mouseover" href="/" { "sentry.mobi" }
+                            " "
+                            small.htmx-indicator id="spinner" aria-busy="true" {
+                                span style="display: none" {
+                                    "is loading"
+                                }
+                            }
+                        }
+                    }
+
+                    @if let Some(header) = opt.header {
+                        (header)
+                    }
+                }
+            }
+
+            main.container {
+                (content)
+            }
+
+            script src="/htmx.js" {}
+            script src="/htmx.preload.js" {}
+        }
+    }
+}
+
+pub const REGION_DOMAINS: &[&str] = &["us.sentry.io", "de.sentry.io"];
+
+pub fn print_relative_time(ts: Timestamp) -> Markup {
+    html! {
+        time datetime=(ts) title=(ts) data-tooltip=(ts) {
+            @if let Ok(x) = ts.until(Timestamp::now()) {
+                @let x = x.round(SpanRound::new().largest(Unit::Day)).unwrap_or(x);
+                @if x.get_days() > 0 {
+                    (x.get_days()) " days "
+                }
+                @if x.get_hours() > 0 {
+                    (x.get_hours()) " hours "
+                }
+                @if x.get_minutes() > 0 {
+                    (x.get_minutes()) " minutes "
+                }
+                @if x.get_seconds() > 0 {
+                    (x.get_seconds()) " seconds "
+                }
+            } @else {
+                (ts)
+            }
+        }
     }
 }

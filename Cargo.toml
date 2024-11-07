@@ -12,7 +12,10 @@ repository = "https://github.com/untitaker/sentry-mobi"
 [dependencies]
 async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros"] }
+human-repr = "1.1.0"
+jiff = { version = "0.1.14", features = ["serde"] }
 maud = { version = "0.26.0", features = ["axum"] }
+memory-serve = "0.6.0"
 reqwest = { version = "0.12.9", features = ["json"] }
 serde = { version = "1.0.214", features = ["derive"] }
 thiserror = "2.0.0"
@@ -21,3 +24,4 @@ tokio = { version = "1.41.0", features = ["full"] }
 tower-sessions = "0.13.0"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+uuid = { version = "1.11.0", features = ["v4"] }

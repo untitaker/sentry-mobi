@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use memory_serve::{load_assets, MemoryServe};
 use tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
 
 mod views;
@@ -16,6 +17,8 @@ pub(crate) use views::SentryToken;
 
 #[tokio::main]
 async fn main() {
+    let static_files = MemoryServe::new(load_assets!("static")).into_router();
+
     tracing_subscriber::fmt::init();
 
     let session_store = MemoryStore::default();
@@ -26,11 +29,13 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(views::index))
+        .merge(static_files)
         .route("/auth", post(views::auth))
         .route("/auth/logout", post(views::logout))
         .route("/organizations", get(views::organization_overview))
-        .route("/organizations/:org", get(views::organization_details))
-        .route("/projects/:org/:proj", get(views::project_details))
+        .route("/:org", get(views::organization_details))
+        .route("/:org/:proj", get(views::project_details))
+        .route("/:org/:proj/issues/:id", get(views::issue_details))
         .layer(session_layer);
 
     let addr = "0.0.0.0:3000";

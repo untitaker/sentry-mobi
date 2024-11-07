@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use maud::html;
 use serde::Deserialize;
 
-use crate::views::helpers::wrap_admin_template;
+use crate::views::helpers::{wrap_admin_template, LayoutOptions};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -12,6 +12,8 @@ use crate::{Error, SentryToken};
 struct ApiProject {
     name: String,
     slug: String,
+    #[serde(default)]
+    is_bookmarked: bool,
 }
 
 #[debug_handler]
@@ -20,7 +22,7 @@ pub async fn organization_details(
     Path(org): Path<String>,
 ) -> Result<impl IntoResponse, Error> {
     let client = token.client()?;
-    let response: Vec<ApiProject> = client
+    let mut response: Vec<ApiProject> = client
         .get(format!(
             "https://sentry.io/api/0/organizations/{org}/projects/"
         ))
@@ -30,17 +32,36 @@ pub async fn organization_details(
         .json()
         .await?;
 
-    Ok(wrap_admin_template(html! {
-        a href="/organizations" { "back to organizations" }
-        h2 { (format!("{org}: projects")) }
-        ul {
-            @for project in response {
-                li {
-                    a href=(format!("/projects/{}/{}", org, project.slug)) {
-                        (project.name)
+    response.sort_by_key(|p| !p.is_bookmarked);
+
+    let body = wrap_admin_template(
+        LayoutOptions {
+            title: org.clone(),
+            ..Default::default()
+        },
+        html! {
+            h2 { (org) ": projects" }
+            ul {
+                @for project in response {
+                    li {
+                        a preload="mouseover" href=(format!("/{}/{}", org, project.slug)) {
+                            (project.name)
+                        }
+
+                        @if project.is_bookmarked {
+                            span title="bookmarked" { "📌" }
+                        }
+
+                        small {
+                            " (" (org) "/" (project.slug) ")"
+                        }
                     }
                 }
             }
-        }
-    }))
+        },
+    );
+
+    let headers = [("Cache-control", "private, max-age=300")];
+
+    Ok((headers, body))
 }
