@@ -125,7 +125,7 @@ pub async fn issue_details(
                     li.prop {
                         span.label { (tag.key) ": " } code { (tag.value) }
                         " ("
-                        a.secondary href=(format!("/projects/{org}/{proj}?query={}:{}", tag.key, tag.value)) {
+                        a.secondary href=(format!("/{org}/{proj}?query={}:{}", tag.key, tag.value)) {
                             "more"
                         }
                         ")"
