@@ -22,6 +22,10 @@
     color: var(--pico-color-pink-500);
 }
 
+[data-level=info] {
+    color: var(--pico-color-azure-500);
+}
+
 .prop {
     margin: 2px;
 }
@@ -31,21 +35,18 @@
     min-width: 128px;
 }
 
-li.prop {
-    list-style: none;
-}
-
-ul:has(> li.prop) {
-    padding: 0;
-}
-
 small.secondary {
     color: var(--pico-secondary);
 }
 
-details[open] {
-    background: var(--pico-card-background-color);
-    border-radius: var(--pico-border-radius);
-    margin: -0.5rem -0.5rem 0.5rem;
-    padding: 0.5rem;
+.help {
+    color: var(--pico-secondary);
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+details {
+    padding: calc(var(--pico-spacing)/ 2) var(--pico-spacing);
+    margin-bottom: 0;
+    border-bottom: var(--pico-border-width) solid var(--pico-table-border-color);
 }

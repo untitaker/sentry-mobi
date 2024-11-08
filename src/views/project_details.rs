@@ -6,7 +6,9 @@ use jiff::Timestamp;
 use maud::html;
 use serde::Deserialize;
 
-use crate::views::helpers::{print_relative_time, wrap_admin_template, LayoutOptions};
+use crate::views::helpers::{
+    print_relative_time, to_sentry_link, wrap_admin_template, LayoutOptions,
+};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -22,6 +24,13 @@ struct ApiIssue {
     #[serde(default)]
     logger: Option<String>,
     count: String,
+    project: ApiProject,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiProject {
+    id: String,
 }
 
 #[derive(Deserialize)]
@@ -52,12 +61,19 @@ pub async fn project_details(
         .json()
         .await?;
 
+    let project_id = response
+        .first()
+        .map(|x| x.project.id.as_str())
+        .unwrap_or("");
+
     let body = wrap_admin_template(
         LayoutOptions {
             title: format!("{org}/{proj}"),
             ..Default::default()
         },
         html! {
+            (to_sentry_link(&format!("https://sentry.io/issues/?project={project_id}&query={query}&statsPeriod=24h")))
+
             h2 {
                 a preload="mouseover" href=(format!("/{org}")) { (org) }
                 (format!("/{proj}"))
@@ -104,14 +120,31 @@ pub async fn project_details(
                         }
                     }
 
-                    p.prop { span.label { "first seen: " } code { (print_relative_time(issue.first_seen)) } }
-                    @if !issue.culprit.is_empty() {
-                        p.prop { span.label { "culprit: " } code { (issue.culprit) } }
+                    table {
+                        tr {
+                            td { "first seen: " }
+                            td { code { (print_relative_time(issue.first_seen)) } }
+                        }
+
+                        @if !issue.culprit.is_empty() {
+                            tr {
+                                td { "culprit: " }
+                                td { code { (issue.culprit) } }
+                            }
+                        }
+
+                        @if let Some(ref logger) = issue.logger {
+                            tr {
+                                td { "logger: " }
+                                td { code { (logger) } }
+                            }
+                        }
+
+                        tr {
+                            td { "status: " }
+                            td { code { (issue.status) } }
+                        }
                     }
-                    @if let Some(ref logger) = issue.logger {
-                        p.prop { span.label { "logger: " } code { (logger) } }
-                    }
-                    p.prop { span.label { "status: " } code { (issue.status) } }
 
                     div style="text-align: right" {
                         a role="button" preload="mouseover" href=(format!("/{org}/{proj}/issues/{}", issue.id)) { "view details" }

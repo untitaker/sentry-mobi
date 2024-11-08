@@ -1400,6 +1400,7 @@ dependencies = [
  "memory-serve",
  "reqwest",
  "serde",
+ "serde_json",
  "thiserror 2.0.0",
  "time",
  "tokio",

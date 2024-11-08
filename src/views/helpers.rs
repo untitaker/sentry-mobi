@@ -24,10 +24,7 @@ pub fn wrap_admin_template(mut opt: LayoutOptions, content: Markup) -> Markup {
             }
         }
     });
-    wrap_template(
-        opt,
-        content,
-    )
+    wrap_template(opt, content)
 }
 
 pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
@@ -101,6 +98,14 @@ pub fn print_relative_time(ts: Timestamp) -> Markup {
             } @else {
                 (ts)
             }
+        }
+    }
+}
+
+pub fn to_sentry_link(url: &str) -> Markup {
+    html! {
+        div style="float: right; text-align: right" {
+            a href=(url) { "open in sentry" }
         }
     }
 }
