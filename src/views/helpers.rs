@@ -10,18 +10,8 @@ pub struct LayoutOptions {
 pub fn wrap_admin_template(mut opt: LayoutOptions, content: Markup) -> Markup {
     opt.header = Some(html! {
         form method="post" action="/auth/logout" {
-            fieldset.grid {
-                a.secondary
-                    role="button"
-                    style="width: 100%"
-                    href=(format!("?_cachebust={}", uuid::Uuid::new_v4()))
-                    title="force a hard-reload of data, skipping caching" {
-                        "Refresh"
-                    }
-
-                // https://github.com/picocss/pico/issues/496
-                input.outline.secondary type="submit" value="Logout" style="margin: 0";
-            }
+            // https://github.com/picocss/pico/issues/496
+            input.outline.secondary type="submit" value="Logout" style="margin: 0; width: auto; float: right";
         }
     });
     wrap_template(opt, content)
@@ -43,6 +33,9 @@ pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
             meta name="htmx-config" content=r#"{"includeIndicatorStyles": false}"#;
             meta name="color-scheme" content="light dark";
             link rel="stylesheet" href="/style.css";
+
+            script src="/htmx.js" {}
+            script src="/htmx.preload.js" {}
         }
 
         body hx-boost="true" hx-indicator="#spinner" hx-ext="preload" {
@@ -52,11 +45,11 @@ pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
                         h1 {
                             a.secondary preload="mouseover" href="/" { "sentry.mobi" }
                             " "
-                            small.htmx-indicator id="spinner" aria-busy="true" {
-                                span style="display: none" {
-                                    "is loading"
+                                small.htmx-indicator id="spinner" aria-busy="true" {
+                                    span style="display: none" {
+                                        "is loading"
+                                    }
                                 }
-                            }
                         }
                     }
 
@@ -69,9 +62,6 @@ pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
             main.container {
                 (content)
             }
-
-            script src="/htmx.js" {}
-            script src="/htmx.preload.js" {}
         }
     }
 }
@@ -102,10 +92,16 @@ pub fn print_relative_time(ts: Timestamp) -> Markup {
     }
 }
 
-pub fn to_sentry_link(url: &str) -> Markup {
+pub fn breadcrumbs(url: &str, h2_content: Markup) -> Markup {
     html! {
-        div style="float: right; text-align: right" {
-            a href=(url) { "open in sentry" }
+        div style="margin-bottom: var(--pico-typography-spacing-vertical)" {
+            h2 style="display:inline" {
+                (h2_content)
+            }
+
+            " "
+
+            a.secondary style="vertical-align: top" href=(url) { "open in sentry" }
         }
     }
 }

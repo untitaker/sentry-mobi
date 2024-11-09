@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use maud::html;
 use serde::Deserialize;
 
-use crate::views::helpers::{to_sentry_link, wrap_admin_template, LayoutOptions};
+use crate::views::helpers::{breadcrumbs, wrap_admin_template, LayoutOptions};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -40,9 +40,9 @@ pub async fn organization_details(
             ..Default::default()
         },
         html! {
-            (to_sentry_link(&format!("https://sentry.io/{}", org)))
-
-            h2 { (org) ": projects" }
+            (breadcrumbs(&format!("https://sentry.io/{}", org), html! {
+                (org) ": projects"
+            }))
 
             ul {
                 @for project in response {

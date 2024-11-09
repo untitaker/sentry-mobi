@@ -8,7 +8,7 @@ use maud::{html, Markup};
 use serde::Deserialize;
 
 use crate::views::helpers::{
-    print_relative_time, to_sentry_link, wrap_admin_template, LayoutOptions,
+    print_relative_time, breadcrumbs, wrap_admin_template, LayoutOptions,
 };
 use crate::{Error, SentryToken};
 
@@ -181,15 +181,13 @@ pub async fn issue_details(
             ..Default::default()
         },
         html! {
-            (to_sentry_link(&issue_response.permalink))
-
-            h2 {
+            (breadcrumbs(&issue_response.permalink, html! {
                 a href=(format!("/{org}")) { (org) }
                 "/"
-                a href=(format!("/{org}/{proj}")) { (proj) }
+                    a href=(format!("/{org}/{proj}")) { (proj) }
                 "/"
-                code { (issue_response.short_id) }
-            }
+                    (issue_response.short_id)
+            }))
 
             h3 {
                 span data-level=(issue_response.level) { (issue_response.level) ": " }
