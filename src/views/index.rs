@@ -1,10 +1,48 @@
-use axum::debug_handler;
+use axum::extract::Query;
 use axum::response::IntoResponse;
 use maud::html;
 use serde::Deserialize;
 
-use crate::views::helpers::{wrap_admin_template, LayoutOptions, REGION_DOMAINS};
+use crate::routes::OrganizationDetails;
+use crate::views::helpers::{wrap_admin_template, wrap_template, LayoutOptions, REGION_DOMAINS};
 use crate::{Error, SentryToken};
+
+#[derive(Deserialize)]
+pub struct RedirectTo {
+    #[serde(default)]
+    redirect_to: Option<String>,
+}
+
+pub async fn index(
+    _: crate::routes::Index,
+    token: SentryToken,
+    Query(params): Query<RedirectTo>,
+) -> Result<impl IntoResponse, Error> {
+    if token.token.is_empty() {
+        Ok(wrap_template(
+            LayoutOptions::default(),
+            html! {
+                form.login method="post" action="/auth" {
+                    @if let Some(redirect_to) = params.redirect_to {
+                        input type="hidden" name="redirect_to" value=(redirect_to);
+                    }
+
+                    fieldset role="group" {
+                        input type="password" name="token" placeholder="your API token";
+                        input type="submit" value="Login";
+                    }
+
+                    small {
+                        "get a user API token from Sentry to view issues"
+                    }
+                }
+            },
+        )
+        .into_response())
+    } else {
+        Ok(organization_overview(token).await?.into_response())
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,8 +67,7 @@ impl ApiOrganization {
     }
 }
 
-#[debug_handler]
-pub async fn organization_overview(token: SentryToken) -> Result<impl IntoResponse, Error> {
+async fn organization_overview(token: SentryToken) -> Result<impl IntoResponse, Error> {
     let client = token.client()?;
     let mut response = Vec::new();
 
@@ -59,7 +96,7 @@ pub async fn organization_overview(token: SentryToken) -> Result<impl IntoRespon
             ul {
                 @for org in response {
                     li {
-                        a preload="mouseover" href=(format!("/{}", org.slug)) {
+                        a preload="mouseover" href=(OrganizationDetails { org: org.slug.clone() }) {
                             (org.name)
                         }
 

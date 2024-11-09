@@ -1,5 +1,3 @@
-use axum::debug_handler;
-use axum::extract::Path;
 use axum::response::IntoResponse;
 use maud::html;
 use serde::Deserialize;
@@ -16,11 +14,12 @@ struct ApiProject {
     is_bookmarked: bool,
 }
 
-#[debug_handler]
 pub async fn organization_details(
+    route: crate::routes::OrganizationDetails,
     token: SentryToken,
-    Path(org): Path<String>,
 ) -> Result<impl IntoResponse, Error> {
+    let org = route.org;
+
     let client = token.client()?;
     let mut response: Vec<ApiProject> = client
         .get(format!(
@@ -47,7 +46,9 @@ pub async fn organization_details(
             ul {
                 @for project in response {
                     li {
-                        a preload="mouseover" href=(format!("/{}/{}", org, project.slug)) {
+                        a preload="mouseover" href=(
+                            crate::routes::ProjectDetails { org: org.clone(), proj: project.slug.clone() }
+                        ) {
                             (project.name)
                         }
 

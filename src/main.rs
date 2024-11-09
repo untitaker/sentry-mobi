@@ -5,15 +5,15 @@ use time::Duration;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
     Router,
 };
 use memory_serve::{load_assets, MemoryServe};
 use tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
 
+mod routes;
 mod views;
 
-pub(crate) use views::SentryToken;
+pub(crate) use views::auth::SentryToken;
 
 #[tokio::main]
 async fn main() {
@@ -28,14 +28,8 @@ async fn main() {
         .with_expiry(Expiry::OnInactivity(Duration::seconds(3600)));
 
     let app = Router::new()
-        .route("/", get(views::index))
         .merge(static_files)
-        .route("/auth", post(views::auth))
-        .route("/auth/logout", post(views::logout))
-        .route("/organizations", get(views::organization_overview))
-        .route("/:org", get(views::organization_details))
-        .route("/:org/:proj", get(views::project_details))
-        .route("/:org/:proj/issues/:id", get(views::issue_details))
+        .merge(routes::get_router())
         .layer(session_layer);
 
     let addr = "0.0.0.0:3000";

@@ -1,14 +1,12 @@
-use axum::debug_handler;
-use axum::extract::{Path, Query};
+use axum::extract::Query;
 use axum::response::IntoResponse;
 use human_repr::HumanCount;
 use jiff::Timestamp;
-use maud::{Markup, html};
+use maud::{html, Markup};
 use serde::Deserialize;
 
-use crate::views::helpers::{
-    print_relative_time, breadcrumbs, wrap_admin_template, LayoutOptions,
-};
+use crate::routes::{IssueDetails, OrganizationDetails, ProjectDetails};
+use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -37,12 +35,14 @@ pub struct SearchQuery {
     query: Option<String>,
 }
 
-#[debug_handler]
 pub async fn project_details(
+    route: ProjectDetails,
     token: SentryToken,
-    Path((org, proj)): Path<(String, String)>,
     Query(params): Query<SearchQuery>,
 ) -> Result<impl IntoResponse, Error> {
+    let org = route.org;
+    let proj = route.proj;
+
     let client = token.client()?;
     let query = params
         .query
@@ -71,9 +71,9 @@ pub async fn project_details(
         },
         html! {
             (breadcrumbs(&format!("https://sentry.io/issues/?project={project_id}&query={query}&statsPeriod=24h"), html! {
-                a preload="mouseover" href=(format!("/{org}")) { (org) }
+                a preload="mouseover" href=(OrganizationDetails { org: org.clone() }) { (org) }
                 (format!("/{proj}"))
-                    ": issues"
+                ": issues"
             }))
 
             style {
@@ -94,7 +94,7 @@ pub async fn project_details(
                 "#
             }
 
-            form method="get" action=(format!("/{org}/{proj}")) {
+            form method="get" action=(ProjectDetails { org: org.clone(), proj: proj.clone()}) {
                 fieldset role="group" {
                     input type="text" name="query" value=(query);
                     input type="submit" value="filter issues";
@@ -114,7 +114,7 @@ fn render_issuestream(org: &str, proj: &str, response: &[ApiIssue]) -> Markup {
     html! {
         @for issue in response {
             div.issue-row {
-                a preload="mouseover" href=(format!("/{org}/{proj}/issues/{}", issue.id)) {
+                a preload="mouseover" href=(IssueDetails { org: org.to_owned(), proj: proj.to_owned(), id: issue.id.clone() }) {
                     span data-level=(issue.level) { (issue.level) ": "}
                     (issue.title)
 

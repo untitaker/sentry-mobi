@@ -1,15 +1,11 @@
 use std::collections::BTreeMap;
 
-use axum::debug_handler;
-use axum::extract::Path;
 use axum::response::IntoResponse;
 use jiff::Timestamp;
 use maud::{html, Markup};
 use serde::Deserialize;
 
-use crate::views::helpers::{
-    print_relative_time, breadcrumbs, wrap_admin_template, LayoutOptions,
-};
+use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions};
 use crate::{Error, SentryToken};
 
 const MAX_BREADCRUMBS: usize = 20;
@@ -140,11 +136,14 @@ struct ApiTag {
     value: String,
 }
 
-#[debug_handler]
 pub async fn issue_details(
+    route: crate::routes::IssueDetails,
     token: SentryToken,
-    Path((org, proj, issue_id)): Path<(String, String, String)>,
 ) -> Result<impl IntoResponse, Error> {
+    let org = route.org;
+    let proj = route.proj;
+    let issue_id = route.id;
+
     let client = token.client()?;
 
     let (issue_response, event_response) = tokio::try_join!(
@@ -182,11 +181,15 @@ pub async fn issue_details(
         },
         html! {
             (breadcrumbs(&issue_response.permalink, html! {
-                a href=(format!("/{org}")) { (org) }
+                a href=(crate::routes::OrganizationDetails { org: org.clone() }) {
+                    (org)
+                }
                 "/"
-                    a href=(format!("/{org}/{proj}")) { (proj) }
+                a href=(crate::routes::ProjectDetails { org: org.clone(), proj: proj.clone() }) {
+                    (proj)
+                }
                 "/"
-                    (issue_response.short_id)
+                (issue_response.short_id)
             }))
 
             h3 {
@@ -362,7 +365,12 @@ pub async fn issue_details(
                             td {
                                 code { (tag.value) }
                                 " ("
-                                a.secondary href=(format!("/{org}/{proj}?query={}:{}", tag.key, tag.value)) {
+                                a.secondary href=(
+                                    format!("{}?query={}:{}",
+                                        crate::routes::ProjectDetails { org: org.clone(), proj: proj.clone() },
+                                        tag.key, tag.value
+                                    )
+                                ) {
                                     "more"
                                 }
                                 ")"

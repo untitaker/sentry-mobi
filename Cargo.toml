@@ -12,6 +12,7 @@ repository = "https://github.com/untitaker/sentry-mobi"
 [dependencies]
 async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros"] }
+axum-extra = { version = "0.9.4", features = ["typed-routing"] }
 human-repr = "1.1.0"
 jiff = { version = "0.1.14", features = ["serde"] }
 maud = { version = "0.26.0", features = ["axum"] }
