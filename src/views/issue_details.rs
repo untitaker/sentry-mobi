@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Redirect};
+use axum::Form;
+use axum_htmx::HxRequest;
 use jiff::Timestamp;
 use maud::{html, Markup};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
+use crate::routes::IssueDetails;
 use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions};
 use crate::{Error, SentryToken};
 
@@ -137,13 +140,13 @@ struct ApiTag {
 }
 
 pub async fn issue_details(
-    route: crate::routes::IssueDetails,
+    IssueDetails {
+        org,
+        proj,
+        issue_id,
+    }: IssueDetails,
     token: SentryToken,
 ) -> Result<impl IntoResponse, Error> {
-    let org = route.org;
-    let proj = route.proj;
-    let issue_id = route.id;
-
     let client = token.client()?;
 
     let (issue_response, event_response) = tokio::try_join!(
@@ -192,20 +195,23 @@ pub async fn issue_details(
                 (issue_response.short_id)
             }))
 
-            h3 {
-                span data-level=(issue_response.level) { (issue_response.level) ": " }
-                (title)
+            div.grid {
+                h2 style="grid-column-end: span 2" {
+                    span data-level=(issue_response.level) { (issue_response.level) ": " }
+                    (title)
+                }
+
+                div {
+                    (render_button_status(&issue_response.status))
+                }
             }
 
             p { i {
                 "first seen "
                 code { (print_relative_time(issue_response.first_seen)) } " ago, "
-                "last seen "
-                code { (print_relative_time(issue_response.last_seen)) } " ago, "
-                "status "
-                code { (issue_response.status) }
                 br;
-
+                "last seen "
+                code { (print_relative_time(issue_response.last_seen)) } " ago. "
                 "showing latest event."
             } }
 
@@ -403,6 +409,240 @@ fn render_stacktrace(stacktrace: &Stacktrace) -> Markup {
                     }
                 }
             }
+        }
+    }
+}
+
+/// the status as sent from the frontend
+#[derive(Deserialize, Copy, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum StatusParam {
+    Unresolved,
+    Resolved,
+    ResolvedInNextRelease,
+    ArchivedUntilEscalating,
+    ArchivedForever,
+}
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct ApiUpdate {
+    status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    substatus: Option<String>,
+    status_details: BTreeMap<String, bool>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateParams {
+    status: StatusParam,
+}
+
+impl UpdateParams {
+    /// Convert to the structure that our API expects for status updates.
+    fn to_api(self) -> ApiUpdate {
+        match self.status {
+            StatusParam::Unresolved => ApiUpdate {
+                status: "unresolved".to_string(),
+                ..Default::default()
+            },
+
+            // resolved
+            StatusParam::Resolved => ApiUpdate {
+                status: "resolved".to_string(),
+                ..Default::default()
+            },
+            StatusParam::ResolvedInNextRelease => ApiUpdate {
+                status: "resolved".to_string(),
+                status_details: [("inNextRelease".to_string(), true)].into_iter().collect(),
+                ..Default::default()
+            },
+
+            // archived
+            // i guess somebody decided statusDetails is no longer good and just started adding
+            // substatus?
+            StatusParam::ArchivedUntilEscalating => ApiUpdate {
+                status: "ignored".to_string(),
+                substatus: Some("archived_until_escalating".to_string()),
+                ..Default::default()
+            },
+            StatusParam::ArchivedForever => ApiUpdate {
+                status: "ignored".to_string(),
+                substatus: Some("archived_forever".to_string()),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+pub async fn update_issue_details(
+    IssueDetails {
+        org,
+        proj,
+        issue_id,
+    }: IssueDetails,
+    HxRequest(is_hx): HxRequest,
+    token: SentryToken,
+    Form(params): Form<UpdateParams>,
+) -> Result<impl IntoResponse, Error> {
+    let client = token.client()?;
+
+    let api_update = params.to_api();
+
+    client
+        .put(format!(
+            // XXX: outdated docs: https://docs.sentry.io/api/events/update-an-issue/
+            "https://sentry.io/api/0/organizations/{org}/issues/{issue_id}/"
+        ))
+        .json(&api_update)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    if is_hx {
+        Ok(render_button_status(&api_update.status).into_response())
+    } else {
+        Ok(Redirect::to(
+            &IssueDetails {
+                org,
+                proj,
+                issue_id,
+            }
+            .to_string(),
+        )
+        .into_response())
+    }
+}
+
+fn render_button_status(status: &str) -> Markup {
+    let default_form = |content| {
+        html! {
+            form
+                method="post"
+                action=""
+                hx-post=""
+                hx-target="#issue-status"
+                hx-select="#issue-status"
+                hx-swap="show:none"
+                onsubmit="event.submitter.setAttribute('aria-busy', 'true')" {
+
+                (content)
+            }
+        }
+    };
+
+    html! {
+        div id="issue-status" {
+            @match status {
+                "unresolved" => div.grid {
+                    (detail_button_fixes())
+
+                    (default_form(html! {
+                        details.dropdown data-tooltip="change status to archived/ignored" {
+
+                            summary.outline.secondary role="button" {
+                                "archive"
+                            }
+
+                            ul {
+
+                            li { button.secondary type="submit" name="status" value="archived_until_escalating" {
+                                "until escalating"
+                            } }
+                            li { button.outline.secondary type="submit" name="status" value="archived_forever" {
+                                "forever"
+                            } }
+
+                            }
+                        }
+                    }))
+
+                    (default_form(html! {
+                        details.dropdown data-tooltip="change status to resolved" {
+                            summary.outline role="button" {
+                                "resolve"
+                            }
+
+                            ul {
+
+                            li { button type="submit" name="status" value="resolved" {
+                                "resolve globally"
+                            } }
+
+                            li { button.outline type="submit" name="status" value="resolved_in_next_release" {
+                                "resolve in next release"
+                            } }
+
+                            }
+                        }
+                    }))
+                },
+                "resolved" => (default_form(html! {
+                    (tooltip("change status to unresolved", html! {
+                        button type="submit" name="status" value="unresolved" title="issue is resolved. click to unresolve." {
+                            "resolved"
+                        }
+                    }))
+                })),
+                "ignored" => (default_form(html! {
+                    (tooltip("change status to unresolved", html! {
+                        button.secondary type="submit" name="status" value="unresolved" title="issue is archived/ignored. click to unresolve." {
+                            "archived"
+                        }
+                    }))
+                })),
+                x => "unknown status: "(x)
+            }
+        }
+    }
+}
+
+// workaround to give tooltips to elements that can't have tooltips.
+// inputs can't have tooltips in picocss (due to limitations of ::before)
+// everything else can't have tooltips and loading indicators at the same time
+fn tooltip(tooltip: &str, content: Markup) -> Markup {
+    html! {
+        div data-tooltip=(tooltip) style="border-bottom: none; cursor: inherit" {
+            (content)
+        }
+    }
+}
+
+// a bunch of picocss bugfixes for a button dropdown
+fn detail_button_fixes() -> Markup {
+    html! {
+        style {
+            r#"
+            :scope {
+                /* disagree with the decision to left-align button text if it's a dropdown. the
+                 * next two rules fix that */
+                details summary[role=button] {
+                    text-align: center;
+                }
+
+                details summary[role=button]::after {
+                    margin-left: -1rem;
+                }
+
+                /* bug in picocss: tooltips on detail elements show the help cursor */
+                details[data-tooltip] {
+                    cursor: inherit;
+                    border-bottom: none;
+                }
+
+                /* some weird padding issue */
+                details > ul > li > button {
+                    margin-bottom: 0;
+                }
+
+                /* shift dropdown to be anchored on the right, because the buttons are already
+                 * touching the edge of the screen */
+                details.dropdown[open] summary + ul {
+                    left: unset;
+                    right: 0;
+                }
+            }
+            "#
         }
     }
 }

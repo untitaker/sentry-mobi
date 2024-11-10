@@ -44,9 +44,3 @@ small.secondary {
     font-size: 0.8em;
     font-style: italic;
 }
-
-details {
-    padding: calc(var(--pico-spacing)/ 2) var(--pico-spacing);
-    margin-bottom: 0;
-    border-bottom: var(--pico-border-width) solid var(--pico-table-border-color);
-}

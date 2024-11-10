@@ -95,13 +95,13 @@ pub fn print_relative_time(ts: Timestamp) -> Markup {
 pub fn breadcrumbs(url: &str, h2_content: Markup) -> Markup {
     html! {
         div style="margin-bottom: var(--pico-typography-spacing-vertical)" {
-            h2 style="display:inline" {
+            h2 style="font-size: 1em; display: inline" {
                 (h2_content)
             }
 
             " "
 
-            a.secondary style="vertical-align: top" href=(url) { "open in sentry" }
+            a.secondary href=(url) { "open in sentry" }
         }
     }
 }

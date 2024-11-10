@@ -1,8 +1,11 @@
+use std::sync::Mutex;
+
 use async_trait::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::{request::Parts, StatusCode, Uri};
 use axum::response::{IntoResponse, Redirect};
 use axum::Form;
+use schnellru::{ByLength, LruMap};
 use serde::Deserialize;
 use tower_sessions::Session;
 
@@ -49,6 +52,15 @@ impl SentryToken {
             });
         }
 
+        static CLIENT: Mutex<Option<LruMap<String, reqwest::Client>>> = Mutex::new(None);
+
+        let mut guard = CLIENT.lock().unwrap();
+        let lru = guard.get_or_insert_with(|| LruMap::new(ByLength::new(50)));
+
+        if let Some(client) = lru.get(&self.token) {
+            return Ok(client.clone());
+        }
+
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::AUTHORIZATION,
@@ -59,6 +71,8 @@ impl SentryToken {
             .default_headers(headers)
             .build()
             .unwrap();
+
+        lru.insert(self.token.clone(), client.clone());
 
         Ok(client)
     }

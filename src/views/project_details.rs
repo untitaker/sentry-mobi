@@ -114,7 +114,7 @@ fn render_issuestream(org: &str, proj: &str, response: &[ApiIssue]) -> Markup {
     html! {
         @for issue in response {
             div.issue-row {
-                a preload="mouseover" href=(IssueDetails { org: org.to_owned(), proj: proj.to_owned(), id: issue.id.clone() }) {
+                a preload="mouseover" href=(IssueDetails { org: org.to_owned(), proj: proj.to_owned(), issue_id: issue.id.clone() }) {
                     span data-level=(issue.level) { (issue.level) ": "}
                     (issue.title)
 

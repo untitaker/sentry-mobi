@@ -32,7 +32,7 @@ async fn main() {
         .merge(routes::get_router())
         .layer(session_layer);
 
-    let addr = "0.0.0.0:3000";
+    let addr = "0.0.0.0:1312";
     tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(

@@ -29,11 +29,11 @@ pub struct ProjectDetails {
 }
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/:org/:proj/issues/:id")]
+#[typed_path("/:org/:proj/issues/:issue_id")]
 pub struct IssueDetails {
     pub org: String,
     pub proj: String,
-    pub id: String,
+    pub issue_id: String,
 }
 
 pub fn get_router() -> Router {
@@ -44,4 +44,5 @@ pub fn get_router() -> Router {
         .typed_get(views::organization_details::organization_details)
         .typed_get(views::project_details::project_details)
         .typed_get(views::issue_details::issue_details)
+        .typed_post(views::issue_details::update_issue_details)
 }
