@@ -9,6 +9,9 @@ keywords = ["sentryio"]
 license = "MIT"
 repository = "https://github.com/untitaker/sentry-mobi"
 
+[features]
+hotreload = ["maud/hotreload"]
+
 [dependencies]
 async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros"] }
@@ -16,7 +19,8 @@ axum-extra = { version = "0.9.4", features = ["typed-routing"] }
 axum-htmx = "0.6.0"
 human-repr = "1.1.0"
 jiff = { version = "0.1.14", features = ["serde"] }
-maud = { version = "0.26.0", features = ["axum"] }
+# https://github.com/lambda-fairy/maud/issues/392
+maud = { version = "0.26.0", features = ["axum"], git = "https://github.com/untitaker/maud", branch = "hotreload-prototype-v2" }
 memory-serve = "0.6.0"
 reqwest = { version = "0.12.9", features = ["json"] }
 schnellru = "0.2.3"

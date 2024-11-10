@@ -1,5 +1,7 @@
 use jiff::{SpanRound, Timestamp, Unit};
-use maud::{html, Markup};
+use maud::Markup;
+
+pub use maud::html;
 
 #[derive(Default)]
 pub struct LayoutOptions {
@@ -30,7 +32,6 @@ pub fn wrap_template(opt: LayoutOptions, content: Markup) -> Markup {
             }
             meta charset="utf-8";
             meta name="viewport" content="width=device-width, initial-scale=1";
-            meta name="htmx-config" content=r#"{"includeIndicatorStyles": false}"#;
             meta name="color-scheme" content="light dark";
             link rel="stylesheet" href="/style.css";
 

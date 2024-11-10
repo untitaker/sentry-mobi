@@ -1,5 +1,5 @@
+use crate::views::helpers::html;
 use axum::response::IntoResponse;
-use maud::html;
 use serde::Deserialize;
 
 use crate::views::helpers::{breadcrumbs, wrap_admin_template, LayoutOptions};

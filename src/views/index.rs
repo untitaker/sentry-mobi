@@ -1,10 +1,11 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
-use maud::html;
 use serde::Deserialize;
 
 use crate::routes::OrganizationDetails;
-use crate::views::helpers::{wrap_admin_template, wrap_template, LayoutOptions, REGION_DOMAINS};
+use crate::views::helpers::{
+    html, wrap_admin_template, wrap_template, LayoutOptions, REGION_DOMAINS,
+};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]

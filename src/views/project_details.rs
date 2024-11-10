@@ -2,11 +2,11 @@ use axum::extract::Query;
 use axum::response::IntoResponse;
 use human_repr::HumanCount;
 use jiff::Timestamp;
-use maud::{html, Markup};
+use maud::Markup;
 use serde::Deserialize;
 
 use crate::routes::{IssueDetails, OrganizationDetails, ProjectDetails};
-use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions};
+use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions, html};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
