@@ -2,7 +2,11 @@
 
 A work-in-progress alternative frontend to Sentry.
 
+<img src=./screenshots/issue-details.png width=981 height=423 />
+
 Right now it can view organizations, projects and a projects issues.
+
+## Usage (for now)
 
 1. `make`
 2. `target/debug/sentry-mobi`
