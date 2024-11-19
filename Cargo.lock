@@ -934,7 +934,7 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 [[package]]
 name = "maud"
 version = "0.26.0"
-source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#6202b5429e000faab92c93fa01bb0d646436eae4"
+source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#f585e29b318150c6df3b595b8f81d833b210f4ca"
 dependencies = [
  "axum-core",
  "http",
@@ -946,7 +946,7 @@ dependencies = [
 [[package]]
 name = "maud_macros"
 version = "0.26.0"
-source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#6202b5429e000faab92c93fa01bb0d646436eae4"
+source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#f585e29b318150c6df3b595b8f81d833b210f4ca"
 dependencies = [
  "maud_macros_impl",
  "proc-macro-error2",
@@ -958,7 +958,7 @@ dependencies = [
 [[package]]
 name = "maud_macros_impl"
 version = "0.26.0"
-source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#6202b5429e000faab92c93fa01bb0d646436eae4"
+source = "git+https://github.com/untitaker/maud?branch=hotreload-prototype-v2#f585e29b318150c6df3b595b8f81d833b210f4ca"
 dependencies = [
  "proc-macro-error2",
  "proc-macro2",

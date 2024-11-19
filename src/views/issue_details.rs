@@ -4,7 +4,7 @@ use axum::response::{IntoResponse, Redirect};
 use axum::Form;
 use axum_htmx::HxRequest;
 use jiff::Timestamp;
-use maud::{html, Markup};
+use maud::{html, Markup, PreEscaped};
 use serde::{Deserialize, Serialize};
 
 use crate::routes::IssueDetails;
@@ -62,6 +62,7 @@ enum KnownEventEntry {
     Breadcrumbs { data: BreadcrumbData },
     Threads { data: ThreadsData },
     Exception { data: ExceptionData },
+    Request { data: RequestData },
 }
 
 #[derive(Deserialize)]
@@ -140,6 +141,24 @@ struct Frame {
 struct ApiTag {
     key: String,
     value: String,
+}
+
+#[derive(Deserialize)]
+struct RequestData {
+    method: String,
+    url: String,
+    //#[serde(default)]
+    //query: Vec<String>,
+    //#[serde(default)]
+    //fragment: Option<String>,
+    #[serde(default)]
+    headers: Vec<(String, String)>,
+    #[serde(default)]
+    env: BTreeMap<String, String>,
+    #[serde(default)]
+    cookies: Vec<(String, String)>,
+    #[serde(default)]
+    data: Option<serde_json::Value>,
 }
 
 pub async fn issue_details(
@@ -229,162 +248,252 @@ pub async fn issue_details(
                 }
             }
 
-
-            @for entry in event_response.entries {
-                @match entry {
-                    ApiEventEntry::Known(KnownEventEntry::Exception { data }) => {
-                        @for exception in data.values {
-                            details {
-                                summary { "exception: " i { (exception.ty) } }
-                                p.help {
-                                    "the reported exception stack. a reported exception may contain another \"root cause\" exception, in which case multiple will be printed."
-                                }
-
-                                pre {
-                                    (exception.value)
-                                }
-
-                                @if let Some(ref stacktrace) = exception.stacktrace {
-                                    (render_stacktrace(stacktrace))
-                                }
-
-                                hr;
-                            }
-                        }
+            style {
+                (PreEscaped(r#"
+                :scope {
+                    .event-entries > details {
+                        padding: 1rem;
+                        padding-left: 2rem;
+                        border-radius: var(--pico-border-radius);
                     }
-                    ApiEventEntry::Known(KnownEventEntry::Threads { data }) => {
-                        details {
-                            summary { "threads and stacktraces" }
-                            p.help {
-                                "threads and stacktraces in sentry show the current callstack from when the event was captured. this is not necessarily the same thing as the exception stacktrace, or where the exception was originally raised."
-                            }
-                            p.help {
-                                "in sentry, you will also sometimes find callstacks from all running threads of the process, but sentry.mobi only shows you one thread."
-                            }
-                            p.help {
-                                "threads can be 'crashing' (in which case most likely the exception did originate from there), and 'current' (in which case the code that captured and sent the error to sentry most likely ran there)"
-                            }
 
-                            @for thread in data.values {
-                                @if !thread.crashed && !thread.current {
-                                    continue;
-                                }
-
-                                p {
-                                    "crashed: " code { (thread.crashed) }
-                                    "; current: " code { (thread.crashed) }
-                                }
-
-                                @if let Some(ref stacktrace) = thread.stacktrace {
-                                    (render_stacktrace(stacktrace))
-                                }
-
-                                hr;
-                            }
-                        }
+                    .event-entries > details[open] {
+                        background: var(--pico-card-background-color);
                     }
-                    ApiEventEntry::Known(KnownEventEntry::Message { data }) => {
-                        details open="" {
-                            summary { "message" }
-                            p.help {
-                                "the log message, for example X in "
-                                code { "myLogger.error(X)" }
-                                ". distinct from the exception's "
-                                em { "value" }
-                                ", and one may appear with or without the other."
-                            }
 
-                            table {
-                                @if let Some(ref logger) = issue_response.logger {
-                                    tr {
-                                        td { "logger: " }
-                                        td { code { (logger) } }
-                                    }
-                                }
-
-                                tr {
-                                    td { "formatted: " }
-                                    td { code { (data.formatted) } }
-                                }
-                            }
-                        }
+                    .event-entries > details > summary {
+                        margin-left: -1rem;
                     }
-                    ApiEventEntry::Known(KnownEventEntry::Breadcrumbs { data }) => {
-                        details {
-                            summary { "breadcrumbs" }
-                            p.help {
-                                "log messages from before the crash happened, most recent messages first. usually from the same thread that the error was reported from. may or may not be relevant."
-                            }
 
-                            table.overflow-auto {
-                                tr {
-                                    td { code { (event_response.timestamp) } }
-                                    td { " this event happened" }
-                                }
-
-                                @for crumb in data.values.iter().rev().take(MAX_BREADCRUMBS){
-                                    tr {
-                                        td { code { (crumb.timestamp) } }
-                                        td {
-                                            span data-level=(crumb.level) { (crumb.level) ": "}
-                                            (crumb.message)
-                                        }
-                                    }
-                                }
-                            }
-
-                            @if data.values.len() > MAX_BREADCRUMBS {
-                                p { em {
-                                    "showed " (MAX_BREADCRUMBS) " out of " (data.values.len())
-                                        " breadcrumbs. for more, "
-                                        a href=(issue_response.permalink) {
-                                            "go to the real sentry."
-                                        }
-                                } }
-                            }
-                        }
+                    .event-entries > details > summary::after {
+                        margin-top: 0.33rem;
                     }
-                    ApiEventEntry::Other { ty, attributes } => {
-                        details {
-                            summary { i { (ty) } }
 
-                            p.help {
-                                "cannot show this section. "
-
-                                a href=(issue_response.permalink) {
-                                    "view on sentry for now."
-                                }
-                            }
-
-                            pre { (serde_json::to_string(&attributes).unwrap()) }
-                        }
+                    .event-entries > details > summary > h3 {
+                        display: inline;
                     }
                 }
+                "#))
             }
 
-            details open="" {
-                summary { "tags" }
+            div.event-entries {
+                @for entry in event_response.entries {
+                    @match entry {
+                        ApiEventEntry::Known(KnownEventEntry::Exception { data }) => {
+                            @for exception in data.values {
+                                details {
+                                    summary { h3 { "exception: " i { (exception.ty) } } }
+                                    p.help {
+                                        "the reported exception stack. a reported exception may contain another \"root cause\" exception, in which case multiple will be printed."
+                                    }
 
-                p.help {
-                    "a mix of user-defined and inferred attributes that events can be searched for."
+                                    pre {
+                                        (exception.value)
+                                    }
+
+                                    @if let Some(ref stacktrace) = exception.stacktrace {
+                                        (render_stacktrace(stacktrace))
+                                    }
+
+                                    hr;
+                                }
+                            }
+                        }
+                        ApiEventEntry::Known(KnownEventEntry::Threads { data }) => {
+                            details {
+                                summary { h3 { "threads and stacktraces" } }
+                                p.help {
+                                    "threads and stacktraces in sentry show the current callstack from when the event was captured. this is not necessarily the same thing as the exception stacktrace, or where the exception was originally raised."
+                                }
+                                p.help {
+                                    "in sentry, you will also sometimes find callstacks from all running threads of the process, but sentry.mobi only shows you one thread."
+                                }
+                                p.help {
+                                    "threads can be 'crashing' (in which case most likely the exception did originate from there), and 'current' (in which case the code that captured and sent the error to sentry most likely ran there)"
+                                }
+
+                                @for thread in data.values {
+                                    @if !thread.crashed && !thread.current {
+                                        continue;
+                                    }
+
+                                    p {
+                                        "crashed: " code { (thread.crashed) }
+                                        "; current: " code { (thread.crashed) }
+                                    }
+
+                                    @if let Some(ref stacktrace) = thread.stacktrace {
+                                        (render_stacktrace(stacktrace))
+                                    }
+
+                                    hr;
+                                }
+                            }
+                        }
+                        ApiEventEntry::Known(KnownEventEntry::Message { data }) => {
+                            details open="" {
+                                summary { h3 { "message" } }
+                                p.help {
+                                    "the log message, for example X in "
+                                    code { "myLogger.error(X)" }
+                                    ". distinct from the exception's "
+                                    em { "value" }
+                                    ", and one may appear with or without the other."
+                                }
+
+                                table {
+                                    @if let Some(ref logger) = issue_response.logger {
+                                        tr {
+                                            td { "logger: " }
+                                            td { code { (logger) } }
+                                        }
+                                    }
+
+                                    tr {
+                                        td { "formatted: " }
+                                        td { code { (data.formatted) } }
+                                    }
+                                }
+                            }
+                        }
+                        ApiEventEntry::Known(KnownEventEntry::Breadcrumbs { data }) => {
+                            details {
+                                summary { h3 { "breadcrumbs" } }
+                                p.help {
+                                    "log messages from before the crash happened, most recent messages first. usually from the same thread that the error was reported from. may or may not be relevant."
+                                }
+
+                                table.overflow-auto {
+                                    tr {
+                                        td { code { (event_response.timestamp) } }
+                                        td { " this event happened" }
+                                    }
+
+                                    @for crumb in data.values.iter().rev().take(MAX_BREADCRUMBS){
+                                        tr {
+                                            td { code { (crumb.timestamp) } }
+                                            td {
+                                                span data-level=(crumb.level) { (crumb.level) ": "}
+                                                (crumb.message)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                @if data.values.len() > MAX_BREADCRUMBS {
+                                    p { em {
+                                        "showed " (MAX_BREADCRUMBS) " out of " (data.values.len())
+                                            " breadcrumbs. for more, "
+                                            a href=(issue_response.permalink) {
+                                                "go to the real sentry."
+                                            }
+                                    } }
+                                }
+                            }
+                        }
+                        ApiEventEntry::Known(KnownEventEntry::Request { data }) => {
+                            details {
+                                summary {
+                                    h3 {
+                                        "request: "
+                                        code {
+                                            (data.method)
+                                            " "
+                                            (data.url)
+                                        }
+                                    }
+                                }
+                                p.help {
+                                    "information about the ingoing HTTP request that the crashing code was handling."
+                                }
+
+                                @if !data.headers.is_empty() {
+                                    h4 { "headers" }
+
+                                    table {
+                                        @for (key, value) in data.headers {
+                                            tr {
+                                                td { code { (key) } }
+                                                td { code { (value) } }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                @if !data.cookies.is_empty() {
+                                    h4 { "cookies" }
+
+                                    table {
+                                        @for (key, value) in data.cookies {
+                                            tr {
+                                                td { code { (key) } }
+                                                td { code { (value) } }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                @if !data.env.is_empty() {
+                                    h4 { "env" }
+
+                                    table {
+                                        @for (key, value) in data.env {
+                                            tr {
+                                                td { code { (key) } }
+                                                td { code { (value) } }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                @if let Some(ref data) = data.data {
+                                    h3 { "body data" }
+                                    pre { (data) }
+                                }
+                            }
+                        }
+                        ApiEventEntry::Other { ty, attributes } => {
+                            details {
+                                summary { i { (ty) } }
+
+                                p.help {
+                                    "cannot show this section. "
+
+                                    a href=(issue_response.permalink) {
+                                        "view on sentry for now."
+                                    }
+                                }
+
+                                pre { (serde_json::to_string(&attributes).unwrap()) }
+                            }
+                        }
+                    }
                 }
 
-                table {
-                    @for tag in event_response.tags {
-                        tr {
-                            td { (tag.key) ": " }
-                            td {
-                                code { (tag.value) }
-                                " ("
-                                a.secondary href=(
-                                    format!("{}?query={}:{}",
-                                        crate::routes::ProjectDetails { org: org.clone(), proj: proj.clone() },
-                                        tag.key, tag.value
-                                    )
-                                ) {
-                                    "more"
+                details open="" {
+                    summary { h3 { "tags" } }
+
+                    p.help {
+                        "a mix of user-defined and inferred attributes that events can be searched for."
+                    }
+
+                    table {
+                        @for tag in event_response.tags {
+                            tr {
+                                td { (tag.key) ": " }
+                                td {
+                                    code { (tag.value) }
+                                    " ("
+                                    a.secondary href=(
+                                        format!("{}?query={}:{}",
+                                            crate::routes::ProjectDetails { org: org.clone(), proj: proj.clone() },
+                                            tag.key, tag.value
+                                        )
+                                    ) {
+                                        "more"
+                                    }
+                                    ")"
                                 }
-                                ")"
                             }
                         }
                     }
@@ -571,11 +680,11 @@ fn render_button_status(status: &str) -> Markup {
                             ul {
 
                             li { button type="submit" name="status" value="resolved" {
-                                "resolve globally"
+                                "globally"
                             } }
 
                             li { button.outline type="submit" name="status" value="resolved_in_next_release" {
-                                "resolve in next release"
+                                "in next release"
                             } }
 
                             }
