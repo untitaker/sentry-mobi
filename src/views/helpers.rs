@@ -1,3 +1,4 @@
+use human_repr::HumanCount;
 use jiff::{SpanRound, Timestamp, Unit};
 use maud::Markup;
 
@@ -103,6 +104,22 @@ pub fn breadcrumbs(url: &str, h2_content: Markup) -> Markup {
             " "
 
             a.secondary href=(url) { "open in sentry" }
+        }
+    }
+}
+
+pub fn event_count(count_string: &str) -> Markup {
+    let count = count_string
+        .parse()
+        .map(|x: u128| x.human_count_bare().to_string())
+        .unwrap_or(count_string.to_owned());
+
+    html! {
+        (count)
+        @if count_string == "1" {
+            " event"
+        } @else {
+            " events"
         }
     }
 }

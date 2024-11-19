@@ -1,12 +1,13 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
-use human_repr::HumanCount;
 use jiff::Timestamp;
 use maud::Markup;
 use serde::Deserialize;
 
 use crate::routes::{IssueDetails, OrganizationDetails, ProjectDetails};
-use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions, html};
+use crate::views::helpers::{
+    breadcrumbs, event_count, html, print_relative_time, wrap_admin_template, LayoutOptions,
+};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -121,8 +122,8 @@ fn render_issuestream(org: &str, proj: &str, response: &[ApiIssue]) -> Markup {
                     br;
 
                     small.secondary {
-                        (issue.count.parse().map(|x: u128| x.human_count_bare().to_string()).unwrap_or(issue.count.clone()))
-                        " events, last seen "
+                        (event_count(&issue.count))
+                        ", last seen "
                         (print_relative_time(issue.last_seen))
                         " ago"
 

@@ -8,7 +8,9 @@ use maud::{html, Markup};
 use serde::{Deserialize, Serialize};
 
 use crate::routes::IssueDetails;
-use crate::views::helpers::{breadcrumbs, print_relative_time, wrap_admin_template, LayoutOptions};
+use crate::views::helpers::{
+    breadcrumbs, event_count, print_relative_time, wrap_admin_template, LayoutOptions,
+};
 use crate::{Error, SentryToken};
 
 const MAX_BREADCRUMBS: usize = 20;
@@ -26,6 +28,7 @@ struct ApiIssue {
     short_id: String,
     #[serde(default)]
     logger: Option<String>,
+    count: String,
 }
 
 #[derive(Deserialize)]
@@ -207,12 +210,14 @@ pub async fn issue_details(
             }
 
             p { i {
+                (event_count(&issue_response.count))
+                ", showing latest event."
+                br;
                 "first seen "
                 code { (print_relative_time(issue_response.first_seen)) } " ago, "
                 br;
                 "last seen "
                 code { (print_relative_time(issue_response.last_seen)) } " ago. "
-                "showing latest event."
             } }
 
             @if !issue_response.culprit.is_empty() {
