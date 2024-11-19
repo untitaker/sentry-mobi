@@ -19,7 +19,6 @@ const MAX_BREADCRUMBS: usize = 20;
 #[serde(rename_all = "camelCase")]
 struct ApiIssue {
     title: String,
-    culprit: String,
     first_seen: Timestamp,
     last_seen: Timestamp,
     status: String,
@@ -128,6 +127,9 @@ struct Stacktrace {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Frame {
+    #[serde(default)]
+    in_app: bool,
+
     #[serde(default)]
     filename: Option<String>,
     #[serde(default)]
@@ -239,21 +241,12 @@ pub async fn issue_details(
                 code { (print_relative_time(issue_response.last_seen)) } " ago. "
             } }
 
-            @if !issue_response.culprit.is_empty() {
-                table {
-                    tr {
-                        td { "culprit: " }
-                        td { code { (issue_response.culprit) } }
-                    }
-                }
-            }
-
             style {
                 (PreEscaped(r#"
                 :scope {
                     .event-entries > details {
-                        padding: 1rem;
-                        padding-left: 2rem;
+                        padding: 0.5rem;
+                        padding-left: 1rem;
                         border-radius: var(--pico-border-radius);
                     }
 
@@ -262,7 +255,7 @@ pub async fn issue_details(
                     }
 
                     .event-entries > details > summary {
-                        margin-left: -1rem;
+                        margin-left: -0.5rem;
                     }
 
                     .event-entries > details > summary::after {
@@ -281,8 +274,11 @@ pub async fn issue_details(
                     @match entry {
                         ApiEventEntry::Known(KnownEventEntry::Exception { data }) => {
                             @for exception in data.values {
-                                details {
-                                    summary { h3 { "exception: " i { (exception.ty) } } }
+                                details open="" {
+                                    summary { h3 {
+                                        "exception: "
+                                        code { (exception.ty) }
+                                    } }
                                     p.help {
                                         "the reported exception stack. a reported exception may contain another \"root cause\" exception, in which case multiple will be printed."
                                     }
@@ -294,8 +290,6 @@ pub async fn issue_details(
                                     @if let Some(ref stacktrace) = exception.stacktrace {
                                         (render_stacktrace(stacktrace))
                                     }
-
-                                    hr;
                                 }
                             }
                         }
@@ -331,8 +325,11 @@ pub async fn issue_details(
                             }
                         }
                         ApiEventEntry::Known(KnownEventEntry::Message { data }) => {
-                            details open="" {
-                                summary { h3 { "message" } }
+                            details {
+                                summary { h3 {
+                                    "message: "
+                                    code { (data.formatted) }
+                                } }
                                 p.help {
                                     "the log message, for example X in "
                                     code { "myLogger.error(X)" }
@@ -454,7 +451,7 @@ pub async fn issue_details(
                         }
                         ApiEventEntry::Other { ty, attributes } => {
                             details {
-                                summary { i { (ty) } }
+                                summary { h3 { code { (ty) } } }
 
                                 p.help {
                                     "cannot show this section. "
@@ -509,9 +506,36 @@ pub async fn issue_details(
 
 fn render_stacktrace(stacktrace: &Stacktrace) -> Markup {
     html! {
-        ul {
-            @for frame in &stacktrace.frames {
-                li {
+        i { "most recent (crashing frame) to least recent (main function)" }
+
+        style {
+            (PreEscaped(r#"
+            :scope {
+                .system-frame {
+                    font-style: italic;
+                    display: none;
+                }
+
+                .show-system-frames-chk:has(:checked) + ul > .system-frame {
+                    display: block;
+                }
+
+                .stacktrace > li {
+                    font-size: 0.7em;
+                    list-style: none;
+                }
+            }
+            "#))
+        }
+
+        label.show-system-frames-chk {
+            input type="checkbox" switch="";
+            "show system frames"
+        }
+
+        ul.stacktrace {
+            @for frame in stacktrace.frames.iter().rev() {
+                li.system-frame[!frame.in_app] {
                     code { (frame.function.as_deref().unwrap_or_default()) }
                     @if frame.filename.is_some() {
                         " in "
