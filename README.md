@@ -7,7 +7,7 @@ Right now it can view organizations, projects and a projects issues.
 1. `make`
 2. `target/debug/sentry-mobi`
 3. get a user API token from sentry (User Settings)
-4. Log in at `http://localhost:3000`
+4. Log in at `http://localhost:1312`
 
 ## Development
 
