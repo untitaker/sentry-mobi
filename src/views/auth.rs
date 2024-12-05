@@ -32,6 +32,8 @@ pub async fn logout(
     session: Session,
 ) -> Result<impl IntoResponse, Error> {
     session.remove::<String>(SESSION_COOKIE_KEY).await?;
+    // cycle ID to invalidate browser caches, which have 'Vary: Cookie'
+    session.cycle_id().await?;
     Ok(Redirect::to("/"))
 }
 

@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::routes::OrganizationDetails;
 use crate::views::helpers::{
-    html, wrap_admin_template, wrap_template, LayoutOptions, REGION_DOMAINS,
+    html, wrap_admin_template, wrap_template, Html, LayoutOptions, REGION_DOMAINS,
 };
 use crate::{Error, SentryToken};
 
@@ -20,7 +20,7 @@ pub async fn index(
     Query(params): Query<RedirectTo>,
 ) -> Result<impl IntoResponse, Error> {
     if token.token.is_empty() {
-        Ok(wrap_template(
+        Ok(Html(wrap_template(
             LayoutOptions::default(),
             html! {
                 form.login method="post" action="/auth" {
@@ -38,7 +38,7 @@ pub async fn index(
                     }
                 }
             },
-        )
+        ))
         .into_response())
     } else {
         Ok(organization_overview(token).await?.into_response())
@@ -114,7 +114,5 @@ async fn organization_overview(token: SentryToken) -> Result<impl IntoResponse, 
         },
     );
 
-    let headers = [("Cache-control", "private, max-age=300")];
-
-    Ok((headers, body))
+    Ok(Html(body))
 }

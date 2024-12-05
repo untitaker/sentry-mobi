@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::routes::IssueDetails;
 use crate::views::helpers::{
-    breadcrumbs, event_count, print_relative_time, wrap_admin_template, LayoutOptions,
+    breadcrumbs, event_count, print_relative_time, wrap_admin_template, Html, LayoutOptions,
 };
 use crate::{Error, SentryToken};
 
@@ -499,9 +499,7 @@ pub async fn issue_details(
         },
     );
 
-    let headers = [("Cache-control", "private, max-age=300")];
-
-    Ok((headers, body))
+    Ok(Html(body))
 }
 
 fn render_stacktrace(stacktrace: &Stacktrace) -> Markup {
@@ -638,7 +636,7 @@ pub async fn update_issue_details(
         .error_for_status()?;
 
     if is_hx {
-        Ok(render_button_status(&api_update.status).into_response())
+        Ok(Html(render_button_status(&api_update.status)).into_response())
     } else {
         Ok(Redirect::to(
             &IssueDetails {

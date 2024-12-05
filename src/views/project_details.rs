@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::routes::{IssueDetails, OrganizationDetails, ProjectDetails};
 use crate::views::helpers::{
-    breadcrumbs, event_count, html, print_relative_time, wrap_admin_template, LayoutOptions,
+    breadcrumbs, event_count, html, print_relative_time, wrap_admin_template, Html, LayoutOptions,
 };
 use crate::{Error, SentryToken};
 
@@ -106,9 +106,7 @@ pub async fn project_details(
         },
     );
 
-    let headers = [("Cache-control", "private, max-age=300")];
-
-    Ok((headers, body))
+    Ok(Html(body))
 }
 
 fn render_issuestream(org: &str, proj: &str, response: &[ApiIssue]) -> Markup {

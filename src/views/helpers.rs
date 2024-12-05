@@ -1,3 +1,4 @@
+use axum::response::{IntoResponse, Response};
 use human_repr::HumanCount;
 use jiff::{SpanRound, Timestamp, Unit};
 use maud::Markup;
@@ -121,5 +122,22 @@ pub fn event_count(count_string: &str) -> Markup {
         } @else {
             " events"
         }
+    }
+}
+
+/// An HTML response.
+#[derive(Clone, Debug)]
+#[must_use]
+pub struct Html(pub maud::Markup);
+
+impl IntoResponse for Html {
+    fn into_response(self) -> Response {
+        let headers = [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Vary", "Cookie"),
+            ("Cache-control", "private, max-age=300"),
+        ];
+
+        (headers, self.0.into_string()).into_response()
     }
 }

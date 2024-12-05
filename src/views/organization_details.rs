@@ -2,7 +2,7 @@ use crate::views::helpers::html;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::views::helpers::{breadcrumbs, wrap_admin_template, LayoutOptions};
+use crate::views::helpers::{breadcrumbs, wrap_admin_template, Html, LayoutOptions};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -65,7 +65,5 @@ pub async fn organization_details(
         },
     );
 
-    let headers = [("Cache-control", "private, max-age=300")];
-
-    Ok((headers, body))
+    Ok(Html(body))
 }
