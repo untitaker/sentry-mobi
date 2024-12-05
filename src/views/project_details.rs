@@ -53,7 +53,7 @@ pub async fn project_details(
         .get(format!(
             "https://sentry.io/api/0/projects/{org}/{proj}/issues/"
         ))
-        .query(&[("query", query)])
+        .query(&[("query", query), ("limit", "25")])
         .send()
         .await?
         .error_for_status()?
