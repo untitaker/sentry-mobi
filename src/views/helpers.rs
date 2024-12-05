@@ -15,7 +15,7 @@ pub fn wrap_admin_template(mut opt: LayoutOptions, content: Markup) -> Markup {
     opt.header = Some(html! {
         form method="post" action="/auth/logout" {
             // https://github.com/picocss/pico/issues/496
-            input.outline.secondary type="submit" value="Logout" style="margin: 0; width: auto; float: right";
+            button.outline.secondary type="submit" style="margin: 0 auto; width: auto; float: right; font-size: 0.6em; padding: 0.6em" { "Logout"}
         }
     });
     wrap_template(opt, content)
