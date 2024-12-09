@@ -1,8 +1,12 @@
-use crate::views::helpers::html;
+use axum::extract::Query;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::views::helpers::{breadcrumbs, wrap_admin_template, Html, LayoutOptions};
+use crate::api_helpers::get_next_link;
+use crate::views::helpers::html;
+use crate::views::helpers::{
+    breadcrumbs, paginated_response, wrap_admin_template, Html, LayoutOptions,
+};
 use crate::{Error, SentryToken};
 
 #[derive(Deserialize)]
@@ -14,22 +18,30 @@ struct ApiProject {
     is_bookmarked: bool,
 }
 
+#[derive(Deserialize)]
+pub struct Params {
+    #[serde(default)]
+    next_link: Option<String>,
+}
+
 pub async fn organization_details(
     route: crate::routes::OrganizationDetails,
     token: SentryToken,
+    Query(params): Query<Params>,
 ) -> Result<impl IntoResponse, Error> {
     let org = route.org;
 
     let client = token.client()?;
-    let mut response: Vec<ApiProject> = client
-        .get(format!(
-            "https://sentry.io/api/0/organizations/{org}/projects/"
-        ))
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    let http_response =
+        client
+            .get(params.next_link.unwrap_or_else(|| {
+                format!("https://sentry.io/api/0/organizations/{org}/projects/")
+            }))
+            .send()
+            .await?
+            .error_for_status()?;
+    let next_link = get_next_link(&http_response);
+    let mut response: Vec<ApiProject> = http_response.json().await?;
 
     response.sort_by_key(|p| !p.is_bookmarked);
 
@@ -43,25 +55,27 @@ pub async fn organization_details(
                 (org) ": projects"
             }))
 
-            ul {
-                @for project in response {
-                    li {
-                        a preload="mouseover" href=(
-                            crate::routes::ProjectDetails { org: org.clone(), proj: project.slug.clone() }
-                        ) {
-                            (project.name)
-                        }
+            (paginated_response(next_link.as_deref(), html! {
+                ul {
+                    @for project in response {
+                        li {
+                            a preload="mouseover" href=(
+                                crate::routes::ProjectDetails { org: org.clone(), proj: project.slug.clone() }
+                            ) {
+                                (project.name)
+                            }
 
-                        @if project.is_bookmarked {
-                            span title="bookmarked" { "📌" }
-                        }
+                            @if project.is_bookmarked {
+                                span title="bookmarked" { "📌" }
+                            }
 
-                        small {
-                            " (" (org) "/" (project.slug) ")"
+                            small {
+                                " (" (org) "/" (project.slug) ")"
+                            }
                         }
                     }
                 }
-            }
+            }))
         },
     );
 

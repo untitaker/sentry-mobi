@@ -141,3 +141,23 @@ impl IntoResponse for Html {
         (headers, self.0.into_string()).into_response()
     }
 }
+
+pub fn paginated_response(next_link: Option<&str>, page_markup: Markup) -> Markup {
+    html! {
+        div.page {
+            (page_markup)
+
+            @if let Some(link) = next_link {
+                hr;
+
+                @let href = format!("?{}", url::form_urlencoded::Serializer::new(String::new())
+                    .append_pair("next_link", link)
+                    .finish());
+
+                a href=(href) hx-get=(href) hx-trigger="revealed" hx-swap="outerHTML" hx-select=".page > *" {
+                    "next page"
+                }
+            }
+        }
+    }
+}
