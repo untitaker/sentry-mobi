@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
 use jiff::Timestamp;
-use maud::{Markup, PreEscaped};
+use maud::Markup;
 use serde::Deserialize;
 
 use crate::api_helpers::get_next_link;
