@@ -1,9 +1,10 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
 use jiff::Timestamp;
-use maud::Markup;
+use maud::{Markup, PreEscaped};
 use serde::Deserialize;
 
+use crate::api_helpers::get_next_link;
 use crate::routes::{IssueDetails, OrganizationDetails, ProjectDetails};
 use crate::views::helpers::{
     breadcrumbs, event_count, html, print_relative_time, wrap_admin_template, Html, LayoutOptions,
@@ -34,6 +35,8 @@ struct ApiProject {
 pub struct SearchQuery {
     #[serde(default)]
     query: Option<String>,
+    #[serde(default)]
+    next_link: Option<String>,
 }
 
 pub async fn project_details(
@@ -49,16 +52,17 @@ pub async fn project_details(
         .query
         .as_deref()
         .unwrap_or("is:unresolved issue.priority:[high, medium]");
-    let response: Vec<ApiIssue> = client
-        .get(format!(
-            "https://sentry.io/api/0/projects/{org}/{proj}/issues/"
-        ))
-        .query(&[("query", query), ("limit", "25")])
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    let http_response =
+        client
+            .get(params.next_link.unwrap_or_else(|| {
+                format!("https://sentry.io/api/0/projects/{org}/{proj}/issues/")
+            }))
+            .query(&[("query", query), ("limit", "25")])
+            .send()
+            .await?
+            .error_for_status()?;
+    let next_link = get_next_link(&http_response);
+    let response: Vec<ApiIssue> = http_response.json().await?;
 
     let project_id = response
         .first()
@@ -102,45 +106,60 @@ pub async fn project_details(
                 }
             }
 
-            (render_issuestream(&org, &proj, &response))
+            (render_issuestream(&org, &proj, &response, next_link.as_deref()))
         },
     );
 
     Ok(Html(body))
 }
 
-fn render_issuestream(org: &str, proj: &str, response: &[ApiIssue]) -> Markup {
+fn render_issuestream(
+    org: &str,
+    proj: &str,
+    response: &[ApiIssue],
+    next_link: Option<&str>,
+) -> Markup {
     html! {
-        @for issue in response {
-            div.issue-row {
-                a preload="mouseover" href=(IssueDetails { org: org.to_owned(), proj: proj.to_owned(), issue_id: issue.id.clone() }) {
-                    span data-level=(issue.level) { (issue.level) ": "}
-                    (issue.title)
+        @if !response.is_empty() {
+            div.page {
+                @for issue in response {
+                    div.issue-row {
+                        a preload="mouseover" href=(IssueDetails { org: org.to_owned(), proj: proj.to_owned(), issue_id: issue.id.clone() }) {
+                            span data-level=(issue.level) { (issue.level) ": "}
+                            (issue.title)
 
-                    br;
+                            br;
 
-                    small.secondary {
-                        (event_count(&issue.count))
-                        ", last seen "
-                        (print_relative_time(issue.last_seen))
-                        " ago"
+                            small.secondary {
+                                (event_count(&issue.count))
+                                ", last seen "
+                                (print_relative_time(issue.last_seen))
+                                " ago"
 
-                        @if !issue.culprit.is_empty() {
-                            ", in "
-                            code { (issue.culprit) }
-                        } @else if let Some(ref logger) = issue.logger {
-                            ", logged via "
-                            code { (logger) }
+                                @if !issue.culprit.is_empty() {
+                                    ", in "
+                                    code { (issue.culprit) }
+                                } @else if let Some(ref logger) = issue.logger {
+                                    ", logged via "
+                                    code { (logger) }
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        @if response.is_empty() {
-            p {
-                "nothing found."
+                @if let Some(link) = next_link {
+                    @let href = format!("?{}", url::form_urlencoded::Serializer::new(String::new())
+                        .append_pair("next_link", link)
+                        .finish());
+
+                    a href=(href) hx-get=(href) hx-trigger="revealed" hx-swap="outerHTML" hx-select=".page > *" {
+                        "next page"
+                    }
+                }
             }
+        } @else {
+            "nothing found."
         }
     }
 }
