@@ -10,6 +10,7 @@ use axum::{
 use memory_serve::{load_assets, MemoryServe};
 use tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
 
+mod api_helpers;
 mod routes;
 mod views;
 

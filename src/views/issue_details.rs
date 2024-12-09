@@ -576,7 +576,7 @@ pub struct UpdateParams {
 
 impl UpdateParams {
     /// Convert to the structure that our API expects for status updates.
-    fn to_api(self) -> ApiUpdate {
+    fn to_api(&self) -> ApiUpdate {
         match self.status {
             StatusParam::Unresolved => ApiUpdate {
                 status: "unresolved".to_string(),

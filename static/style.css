@@ -44,3 +44,13 @@ small.secondary {
     font-size: 0.8em;
     font-style: italic;
 }
+
+
+[data-hx-revealed=true] {
+    text-decoration: none;
+    color: var(--pico-secondary);
+}
+
+[data-hx-revealed=true]:after {
+    content: " is loading"
+}
